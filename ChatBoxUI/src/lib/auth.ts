@@ -1,6 +1,6 @@
 import type { LoginCredentials, LoginResponse } from "../types/auth";
 
-const DEFAULT_API_BASE_URL = "http://localhost:5000";
+const DEFAULT_API_BASE_URL = "http://localhost:5001";
 
 function getApiBaseUrl(): string {
   const configured = import.meta.env?.VITE_API_URL;

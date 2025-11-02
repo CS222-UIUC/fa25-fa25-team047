@@ -5,7 +5,31 @@
 
   ## Running the code
 
-  Run `npm i` to install the dependencies.
+  1. **Install dependencies:**
+     ```bash
+     npm i
+     ```
 
-  Run `npm run dev` to start the development server.
+  2. **Start the backend Flask server** (in a separate terminal):
+     ```bash
+     cd ../flask
+     pip install -r requirements.txt
+     # Create .env file with OPENAI_API_KEY=your_key_here
+     python app.py
+     ```
+
+  3. **Start the frontend development server:**
+     ```bash
+     npm run dev
+     ```
+
+  The app will be available at `http://localhost:3000`
+
+  ## Features
+
+  - User authentication
+  - Real-time chat with ChatGPT API
+  - Message history display
+  - File attachments support
+  - Modern UI with shadcn/ui components
   
