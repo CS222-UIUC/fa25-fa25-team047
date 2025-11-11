@@ -3,15 +3,7 @@ export interface LoginCredentials {
   password: string;
 }
 
-export interface User {
-  id: number;
-  email: string;
-  created_at: string;
-}
-
-export interface AuthResponse {
+export interface LoginResponse {
   token: string;
   email: string;
-  user: User;
-  message?: string;
 }

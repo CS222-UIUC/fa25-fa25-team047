@@ -1,21 +1,19 @@
-import type { LoginCredentials } from "../types/auth";
+import type { LoginCredentials, LoginResponse } from "../types/auth";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const DEFAULT_API_BASE_URL = "http://localhost:5000";
 
-export interface AuthResponse {
-  token: string;
-  email: string;
-  user: {
-    id: number;
-    email: string;
-    created_at: string;
-  };
+function getApiBaseUrl(): string {
+  const configured = import.meta.env?.VITE_API_URL;
+  if (configured && typeof configured === "string" && configured.trim().length > 0) {
+    return configured.replace(/\/+$/, "");
+  }
+  return DEFAULT_API_BASE_URL;
 }
 
 export async function login(
-  credentials: LoginCredentials
-): Promise<AuthResponse> {
-  const response = await fetch(`${API_BASE_URL}/auth/login`, {
+  credentials: LoginCredentials,
+): Promise<LoginResponse> {
+  const response = await fetch(`${getApiBaseUrl()}/auth/login`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -23,55 +21,26 @@ export async function login(
     body: JSON.stringify(credentials),
   });
 
-  const data = await response.json();
+  const data = await response.json().catch(() => undefined);
 
   if (!response.ok) {
-    throw new Error(data.error || "Login failed");
+    const message =
+      typeof data?.error === "string" && data.error.length > 0
+        ? data.error
+        : "Sign in failed. Please try again.";
+    throw new Error(message);
+  }
+
+  if (
+    typeof data?.token !== "string" ||
+    data.token.length === 0 ||
+    typeof data.email !== "string"
+  ) {
+    throw new Error("Unexpected response from server.");
   }
 
   return {
     token: data.token,
-    email: data.user.email,
-    user: data.user,
+    email: data.email,
   };
-}
-
-export async function register(
-  credentials: LoginCredentials
-): Promise<AuthResponse> {
-  const response = await fetch(`${API_BASE_URL}/auth/register`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(credentials),
-  });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.error || "Registration failed");
-  }
-
-  return {
-    token: data.token,
-    email: data.user.email,
-    user: data.user,
-  };
-}
-
-export async function getCurrentUser(token: string) {
-  const response = await fetch(`${API_BASE_URL}/auth/me`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.error || "Failed to get user info");
-  }
-
-  return data.user;
 }
