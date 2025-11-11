@@ -4,6 +4,7 @@ import { PromptArea } from "./components/PromptArea";
 import { LoginPage } from "./components/LoginPage";
 import { login } from "./lib/auth";
 import type { LoginCredentials } from "./types/auth";
+import type { Message } from "./components/ChatMessage";
 
 type AuthState =
   | { status: "unauthenticated" }
@@ -15,6 +16,7 @@ export default function App() {
   const [authState, setAuthState] = useState<AuthState>({
     status: "unauthenticated",
   });
+  const [messages, setMessages] = useState<Message[]>([]);
 
   const handleLogin = async (credentials: LoginCredentials) => {
     try {
@@ -46,13 +48,13 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-full w-full bg-background">
+    <div className="flex h-screen w-full bg-background">
       {/* Sidebar */}
       <ChatSidebar />
 
       {/* Main Content */}
-      <div className="flex-1 overflow-auto">
-        <PromptArea />
+      <div className="flex-1 overflow-hidden">
+        <PromptArea messages={messages} setMessages={setMessages} />
       </div>
     </div>
   );
