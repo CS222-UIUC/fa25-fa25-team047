@@ -7,9 +7,8 @@ from uuid import uuid4
 app = Flask(__name__)
 CORS(app, resources={r"/auth/*": {"origins": "*"}})
 
-@app.route('/')
-def hello_world():
-    return 'Hello, World!'
+    # Load configuration
+    app.config.from_object(config[config_name])
 
 @app.post('/auth/login')
 def login():
