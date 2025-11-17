@@ -1,4 +1,6 @@
 import Docker from 'dockerode';
+import tar from 'tar-stream';
+import { PassThrough } from 'stream';
 
 export class DockerSandbox {
   private docker: Docker;
@@ -52,14 +54,26 @@ export class DockerSandbox {
     };
   }
 
+  private getFilename(language: string): string {
+  const files: Record<string, string> = {
+    python: 'main.py',
+    javascript: 'main.js',
+    typescript: 'main.ts',
+    cpp: 'main.cpp',
+    java: 'Main.java'
+  };
+    return files[language] || 'main.txt';
+  }
+
   // tells container how to run copied code
   
   private getCommand(language: string): string[] {
     const commands: Record<string, string[]> = {
-      python: ['python', '/tmp/main.py'],
+      python: ['python3', '/tmp/main.py'],
       javascript: ['node', '/tmp/main.js'],
       typescript: ['ts-node', '/tmp/main.ts'],
-      cpp: ['/bin/sh', '/run.sh']
+      cpp: ['/bin/sh', '/tmp/run.sh'],
+      java: ['/bin/sh', '/tmp/run-java.sh']
     };
     return commands[language] || commands.cpp;
   }
@@ -69,6 +83,20 @@ export class DockerSandbox {
     code: string,
     language: string
   ): Promise<void> {
-    // TODO
+
+    // create tar pack stream in memory
+    const pack = tar.pack();
+    const stream = new PassThrough();
+
+    const filename = this.getFilename(language);
+
+    // add file to tar archive
+    pack.entry({ name: filename }, code);
+    pack.finalize();
+
+    pack.pipe(stream);
+
+    await container.putArchive(pack, { path: '/tmp' });
   }
+
 }
