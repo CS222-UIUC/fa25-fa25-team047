@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { ChatMessage, type Message } from "./ChatMessage";
-import { ScrollArea } from "./ui/scroll-area";
 
 interface ChatContainerProps {
   messages: Message[];
@@ -17,8 +16,8 @@ export function ChatContainer({ messages, isLoading = false }: ChatContainerProp
   }, [messages]);
 
   return (
-    <ScrollArea className="flex-1 px-4 py-6">
-      <div className="max-w-3xl mx-auto">
+    <div className="flex-1 px-4 py-6 overflow-visible">
+      <div className="max-w-6xl mx-auto">
         {messages.length === 0 ? (
           <div className="flex h-full items-center justify-center text-center text-muted-foreground">
             <div>
@@ -45,7 +44,6 @@ export function ChatContainer({ messages, isLoading = false }: ChatContainerProp
           </div>
         )}
       </div>
-    </ScrollArea>
+    </div>
   );
 }
-

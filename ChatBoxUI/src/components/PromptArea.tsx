@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { ArrowUp, Paperclip, X } from "lucide-react";
+import { ArrowUp, Paperclip, X, Loader2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { ChatContainer } from "./ChatContainer";
@@ -9,10 +9,11 @@ import { toast } from "sonner";
 
 interface PromptAreaProps {
   messages: Message[];
-  setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
+  updateMessages: (updater: (prev: Message[]) => Message[]) => void;
+  renameChat: (title: string) => void;
 }
 
-export function PromptArea({ messages, setMessages }: PromptAreaProps) {
+export function PromptArea({ messages, updateMessages, renameChat }: PromptAreaProps) {
   const [prompt, setPrompt] = useState("");
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -28,7 +29,10 @@ export function PromptArea({ messages, setMessages }: PromptAreaProps) {
       timestamp: new Date(),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    updateMessages((prev) => [...prev, userMessage]);
+    if (messages.length === 0) {
+      renameChat(userMessage.content.slice(0, 40) || "New Chat");
+    }
     setPrompt("");
     setIsLoading(true);
 
@@ -44,11 +48,12 @@ export function PromptArea({ messages, setMessages }: PromptAreaProps) {
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: response,
+        content: response.message,
         timestamp: new Date(),
+        challenge: response.challenge,
       };
 
-      setMessages((prev) => [...prev, assistantMessage]);
+      updateMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
       console.error("Error sending message:", error);
       toast.error("Failed to send message. Please try again.");
@@ -74,11 +79,9 @@ export function PromptArea({ messages, setMessages }: PromptAreaProps) {
   };
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex min-h-screen flex-col overflow-visible">
       {/* Chat Messages */}
-      {messages.length > 0 && (
-        <ChatContainer messages={messages} isLoading={isLoading} />
-      )}
+      <ChatContainer messages={messages} isLoading={isLoading} />
 
       {/* Input Area - Only show when no messages or at bottom */}
       <div className="border-t border-border bg-background">
@@ -208,11 +211,11 @@ export function PromptArea({ messages, setMessages }: PromptAreaProps) {
 
                 <Button
                   onClick={handleSubmit}
-                  disabled={!prompt.trim() && attachedFiles.length === 0}
+                  disabled={isLoading || (!prompt.trim() && attachedFiles.length === 0)}
                   size="icon"
                   className="h-9 w-9 rounded-full"
                 >
-                  <ArrowUp className="h-5 w-5" />
+                  {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <ArrowUp className="h-5 w-5" />}
                 </Button>
               </div>
             </div>
