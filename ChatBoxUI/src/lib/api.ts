@@ -5,7 +5,22 @@ export interface ChatMessage {
   content: string;
 }
 
-export async function sendChatMessage(message: string, history: ChatMessage[]): Promise<string> {
+export interface ChallengePayload {
+  title: string;
+  difficulty: string;
+  description: string;
+  function_signature: string;
+  starter_code: string;
+  visible_tests: { description: string; input_json: string; expected_json: string }[];
+  hidden_tests: { description: string; input_json: string; expected_json: string }[];
+}
+
+export interface ChatResponse {
+  message: string;
+  challenge?: ChallengePayload;
+}
+
+export async function sendChatMessage(message: string, history: ChatMessage[]): Promise<ChatResponse> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/chat`, {
       method: 'POST',
@@ -24,10 +39,9 @@ export async function sendChatMessage(message: string, history: ChatMessage[]): 
     }
 
     const data = await response.json();
-    return data.message;
+    return data;
   } catch (error) {
     console.error('Error sending chat message:', error);
     throw error;
   }
 }
-
