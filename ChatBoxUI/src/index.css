@@ -71,7 +71,7 @@
     box-sizing: border-box;
     border: 0 solid;
     margin: 0;
-    padding: 0;
+    padding: 10px;
   }
 
   ::file-selector-button {
@@ -85,7 +85,7 @@
     -webkit-text-size-adjust: 100%;
     tab-size: 4;
     line-height: 1.5;
-    font-family: var(--default-font-family, ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji");
+    font-family: var(--font-mono);
     font-feature-settings: var(--default-font-feature-settings, normal);
     font-variation-settings: var(--default-font-variation-settings, normal);
     -webkit-tap-highlight-color: transparent;
@@ -107,8 +107,9 @@
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-size: inherit;
-    font-weight: inherit;
+    font-size: 25px;
+    font-weight: bolder;
+    padding-bottom: 0%;
   }
 
   a {
@@ -188,7 +189,8 @@
     color: inherit;
     opacity: 1;
     background-color: #0000;
-    border-radius: 0;
+    border-radius: 20px;
+    border-color: #ff7a85;
   }
 
   ::file-selector-button {
@@ -290,6 +292,7 @@
     appearance: button;
   }
 
+
   ::file-selector-button {
     appearance: button;
   }
@@ -367,6 +370,7 @@
     font-size: var(--text-base);
     font-weight: var(--font-weight-medium);
     line-height: 1.5;
+    margin: 0;
   }
 
   :where(:not(:has([class*=" text-"]), :not(:has([class^="text-"])))) input {
@@ -645,7 +649,8 @@
   }
 
   .border-input {
-    border-color: var(--input);
+    border-color: #ff7a85;
+    margin-bottom: 30px;
   }
 
   .border-t-transparent {
@@ -661,7 +666,7 @@
   }
 
   .bg-border {
-    background-color: var(--border);
+    background-color: transparent;
   }
 
   .bg-card {
@@ -746,6 +751,7 @@
 
   .text-left {
     text-align: left;
+    padding: 0px;
   }
 
   .text-base {
