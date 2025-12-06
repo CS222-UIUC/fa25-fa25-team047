@@ -39,9 +39,15 @@ export function ChatSidebar({ chats, currentChatId, onNewChat, onSelectChat, onD
     <div className="flex h-full w-64 flex-col border-r border-border bg-background">
       {/* Header */}
       <div className="p-3 border-b border-border">
-        <Button className="w-full justify-start gap-2" variant="outline" onClick={onNewChat}>
-          <Plus className="h-4 w-4" />
-          New Chat
+        <Button
+          className="w-full justify-start gap-3 bg-transparent text-white border border-white/30 hover:bg-accent cursor-pointer"
+          variant="outline"
+          onClick={onNewChat}
+        >
+          <span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/30 bg-white/10 text-white">
+            <Plus className="h-4 w-4 fill-white" />
+          </span>
+          <span className="text-sm font-medium text-white">New Chat</span>
         </Button>
       </div>
 
@@ -61,8 +67,12 @@ export function ChatSidebar({ chats, currentChatId, onNewChat, onSelectChat, onD
                     chat.id === currentChatId ? "bg-accent" : ""
                   }`}
                 >
-                  <MessageSquare className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                  <span className="flex-1 truncate text-sm">{chat.title || "New Chat"}</span>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/30 bg-white/10 text-white">
+                    <MessageSquare className="h-4 w-4 flex-shrink-0 text-white fill-white" />
+                  </span>
+                  <span className="flex-1 truncate text-sm text-white">
+                    {chat.title || "New Chat"}
+                  </span>
                   <Button
                     variant="ghost"
                     size="icon"

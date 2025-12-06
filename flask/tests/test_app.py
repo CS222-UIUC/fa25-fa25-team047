@@ -53,3 +53,31 @@ def test_challenge_request_returns_structured_challenge(client, monkeypatch):
         assert field in challenge
     assert isinstance(challenge["visible_tests"], list)
     assert isinstance(challenge["hidden_tests"], list)
+
+
+def test_regular_message_returns_mock_when_no_openai(client):
+    # Simulate missing API key to ensure we return a mock message instead of a 500.
+    flask_app.openai_client = None
+    resp = client.post(
+        "/api/chat",
+        json={"message": "hello", "history": []},
+    )
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert "message" in data
+    assert "(mock)" in data["message"]
+    assert data.get("warning")
+
+
+def test_challenge_request_returns_fallback_when_no_openai(client):
+    flask_app.openai_client = None
+    resp = client.post(
+        "/api/chat",
+        json={"message": "generate a graph challenge", "history": []},
+    )
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data.get("message", "").lower().startswith("using a fallback challenge")
+    challenge = data["challenge"]
+    for field in ["title", "difficulty", "description", "function_signature", "starter_code", "visible_tests", "hidden_tests"]:
+        assert field in challenge

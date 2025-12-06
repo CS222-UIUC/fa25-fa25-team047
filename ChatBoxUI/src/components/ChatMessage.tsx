@@ -55,10 +55,9 @@ function PythonSandbox({
   const [code, setCode] = useState(
     starterCode || "# Write your Python solution here\n\ndef solution():\n    return \"Hello, sandbox!\"\n"
   );
-  const [output, setOutput] = useState("Waiting to run...");
+  const [output, setOutput] = useState("Waiting to run tests...");
   const [pyodide, setPyodide] = useState<any>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
-  const [isRunning, setIsRunning] = useState(false);
   const [testResults, setTestResults] = useState<TestResult[]>([]);
   const [isTesting, setIsTesting] = useState<"visible" | "all" | null>(null);
   const codeAreaRef = useRef<HTMLTextAreaElement>(null);
@@ -102,36 +101,6 @@ function PythonSandbox({
     };
   }, []);
 
-  const runCode = async () => {
-    if (!pyodide) return;
-    setIsRunning(true);
-    setOutput("Running...");
-    try {
-      const wrapped = `
-import sys, io, traceback
-_buffer = io.StringIO()
-_stdout = sys.stdout
-_stderr = sys.stderr
-sys.stdout = _buffer
-sys.stderr = _buffer
-try:
-    exec(${JSON.stringify(code)}, {})
-except Exception:
-    traceback.print_exc()
-finally:
-    sys.stdout = _stdout
-    sys.stderr = _stderr
-_buffer.getvalue()
-`;
-      const result = await pyodide.runPythonAsync(wrapped);
-      setOutput((result || "").trim() || "(no output)");
-    } catch (err: any) {
-      setOutput(`Runtime error: ${err?.message || err}`);
-    } finally {
-      setIsRunning(false);
-    }
-  };
-
   const autoResize = () => {
     const el = codeAreaRef.current;
     if (!el) return;
@@ -144,6 +113,24 @@ _buffer.getvalue()
   useEffect(() => {
     autoResize();
   }, [code]);
+
+  const handleEditorKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Tab") {
+      event.preventDefault();
+      const el = codeAreaRef.current;
+      if (!el) return;
+      const indent = "  ";
+      const { selectionStart, selectionEnd, value } = el;
+      const nextValue = `${value.slice(0, selectionStart)}${indent}${value.slice(selectionEnd)}`;
+      setCode(nextValue);
+      // Restore cursor after inserting spaces.
+      requestAnimationFrame(() => {
+        const cursor = selectionStart + indent.length;
+        el.selectionStart = cursor;
+        el.selectionEnd = cursor;
+      });
+    }
+  };
 
   const runTests = async (mode: "visible" | "all") => {
     if (!pyodide) return;
@@ -158,6 +145,7 @@ _buffer.getvalue()
 
     setIsTesting(mode);
     setTestResults([]);
+    setOutput(mode === "visible" ? "Running visible tests..." : "Running all tests...");
 
     try {
       const testsPayload = JSON.stringify(tests);
@@ -205,7 +193,14 @@ json.dumps({"results": results})
 
       const raw = await pyodide.runPythonAsync(pyCode);
       const parsed = JSON.parse(raw);
-      setTestResults(parsed.results || []);
+      const results = parsed.results || [];
+      setTestResults(results);
+      const allPassed = results.length > 0 && results.every((r: TestResult) => r.status === "passed");
+      if (allPassed) {
+        setOutput("All tests passed!");
+      } else {
+        setOutput("Tests completed. Review results below.");
+      }
     } catch (err: any) {
       setTestResults([
         {
@@ -214,12 +209,12 @@ json.dumps({"results": results})
           error: err?.message || String(err),
         },
       ]);
+      setOutput("Tests failed to run. Check errors below.");
     } finally {
       setIsTesting(null);
     }
   };
 
-  const disabled = status !== "ready" || isRunning;
   const testsDisabled = status !== "ready" || isTesting !== null;
   const statusText =
     status === "loading"
@@ -238,17 +233,15 @@ json.dumps({"results": results})
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={runCode}
-            disabled={disabled}
-            className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
-          >
-            {isRunning ? "Running..." : "Submit"}
-          </button>
-          <button
-            type="button"
             onClick={() => runTests("visible")}
             disabled={testsDisabled}
-            className="rounded-lg border border-border px-3 py-2 text-sm font-medium disabled:opacity-50"
+            className="rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
+            style={{
+              backgroundColor: "#8dd38d",
+              color: "#ffffff",
+              border: "1px solid #7bc87b",
+              cursor: "pointer",
+            }}
           >
             {isTesting === "visible" ? "Running..." : "Run 3 tests"}
           </button>
@@ -256,7 +249,13 @@ json.dumps({"results": results})
             type="button"
             onClick={() => runTests("all")}
             disabled={testsDisabled}
-            className="rounded-lg border border-border px-3 py-2 text-sm font-medium disabled:opacity-50"
+            className="rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
+            style={{
+              backgroundColor: "#1b5e1f",
+              color: "#ffffff",
+              border: "1px solid #144a18",
+              cursor: "pointer",
+            }}
           >
             {isTesting === "all" ? "Submitting..." : "Submit all tests"}
           </button>
@@ -268,15 +267,22 @@ json.dumps({"results": results})
           ref={codeAreaRef}
           value={code}
           onChange={(e) => setCode(e.target.value)}
-          className="w-full rounded-xl border border-border bg-background font-mono text-sm p-3 outline-none focus:ring-2 focus:ring-primary"
+          onKeyDown={handleEditorKeyDown}
+          className="w-full rounded-xl border border-border bg-white text-black font-mono text-sm p-3 outline-none focus:ring-2 focus:ring-primary"
+          style={{ backgroundColor: "#ffffff", color: "#000000" }}
           spellCheck={false}
         />
         <div
-          className="rounded-xl border border-border bg-background p-3 overflow-auto"
-          style={{ height: `${editorHeight}px` }}
+          className="rounded-xl border border-border bg-white text-black p-3 overflow-auto"
+          style={{ backgroundColor: "#ffffff", color: "#000000", maxHeight: "200px" }}
         >
           <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Output</div>
-          <pre className="whitespace-pre-wrap text-sm font-mono">{output}</pre>
+          <pre
+            className="whitespace-pre-wrap text-sm font-mono text-black"
+            style={{ backgroundColor: "#ffffff", color: "#000000" }}
+          >
+            {output}
+          </pre>
         </div>
       </div>
 
@@ -286,6 +292,11 @@ json.dumps({"results": results})
 
       {testResults.length > 0 && (
         <div className="rounded-xl border border-border bg-background p-3">
+          {testResults.every((r) => r.status === "passed") && (
+            <div className="mb-2 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+              All tests passed!
+            </div>
+          )}
           <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Test results</div>
           <div className="space-y-2">
             {testResults.map((res, idx) => (
