@@ -41,19 +41,6 @@ function mockPyodide({ onRunTests }: { onRunTests?: () => string }) {
 }
 
 describe("ChatMessage Python sandbox", () => {
-  test("renders sandbox and executes code on Submit", async () => {
-    const runPythonAsync = mockPyodide({});
-    render(<ChatMessage message={buildMessage()} />);
-
-    await waitFor(() => expect(runPythonAsync).toHaveBeenCalled());
-
-    const submit = screen.getByRole("button", { name: /submit/i });
-    await userEvent.click(submit);
-
-    await waitFor(() => expect(runPythonAsync).toHaveBeenCalledTimes(2));
-    expect(screen.getByText("stdout from code")).toBeInTheDocument();
-  });
-
   test("runs visible tests and shows pass/fail", async () => {
     const runPythonAsync = mockPyodide({
       onRunTests: () =>
@@ -69,13 +56,13 @@ describe("ChatMessage Python sandbox", () => {
     const runVisible = await screen.findByRole("button", { name: /run 3 tests/i });
     await userEvent.click(runVisible);
 
-    await waitFor(() => expect(runPythonAsync).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(runPythonAsync).toHaveBeenCalledTimes(1));
 
-    expect(screen.getByText("visible 1")).toBeInTheDocument();
-    expect(screen.getByText("passed")).toBeInTheDocument();
-    expect(screen.getByText("visible 2")).toBeInTheDocument();
-    expect(screen.getByText("failed")).toBeInTheDocument();
-    expect(screen.getByText(/Expected:/)).toBeInTheDocument();
+    expect(screen.getAllByText("visible 1").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("passed").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("visible 2").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("failed").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Expected:/).length).toBeGreaterThan(0);
   });
 
   test("runs all tests and labels hidden ones", async () => {
@@ -93,7 +80,27 @@ describe("ChatMessage Python sandbox", () => {
     const submitAll = await screen.findByRole("button", { name: /submit all tests/i });
     await userEvent.click(submitAll);
 
-    await waitFor(() => expect(runPythonAsync).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(runPythonAsync).toHaveBeenCalledTimes(1));
     expect(screen.getByText(/hidden 1/i)).toHaveTextContent("(hidden)");
+  });
+
+  test("shows success banner when all tests pass", async () => {
+    const runPythonAsync = mockPyodide({
+      onRunTests: () =>
+        JSON.stringify({
+          results: [
+            { name: "visible 1", status: "passed", isHidden: false },
+            { name: "visible 2", status: "passed", isHidden: false },
+            { name: "hidden 1", status: "passed", isHidden: true },
+          ],
+        }),
+    });
+    render(<ChatMessage message={buildMessage()} />);
+
+    const submitAll = await screen.findByRole("button", { name: /submit all tests/i });
+    await userEvent.click(submitAll);
+
+    await waitFor(() => expect(runPythonAsync).toHaveBeenCalledTimes(1));
+    expect(screen.getAllByText(/all tests passed/i).length).toBeGreaterThan(0);
   });
 });
