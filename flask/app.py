@@ -85,7 +85,8 @@ def chat():
             print("Using fallback challenge.")
             return jsonify({
                 'message': f"OpenAI generation failed ({str(e)}). Using a fallback challenge instead.",
-                'challenge': fallback
+                'challenge': fallback,
+                'error': str(e),
             }), 200
 
     try:
@@ -192,31 +193,39 @@ Rules:
     if topic:
         user_instruction += f" Focus on the topic: {topic}."
 
-    completion = openai_client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_instruction}
-        ],
-        temperature=0.7,
-        max_tokens=900
-    )
-
-    content = completion.choices[0].message.content
-    try:
-        return json.loads(content)
-    except Exception as parse_error:
-        # Try to strip common markdown fences before giving up
-        cleaned = content.strip()
-        if cleaned.startswith("```"):
-            cleaned = cleaned.strip("`")
-            cleaned = cleaned.replace("json", "", 1).strip()
+    last_error: Exception | None = None
+    last_content: str | None = None
+    for attempt in range(3):  # retry on API or parse errors
+        try:
+            completion = openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_instruction}
+                ],
+                temperature=0.4,
+                max_tokens=900,
+                response_format={"type": "json_object"},
+            )
+            content = completion.choices[0].message.content
+            last_content = content
             try:
-                return json.loads(cleaned)
-            except Exception:
-                pass
-        print(f"Failed to parse challenge JSON: {parse_error} | content: {content}")
-        return None
+                return json.loads(content)
+            except Exception as parse_error:
+                last_error = parse_error
+                print(f"OpenAI parse attempt {attempt + 1} failed: {parse_error}")
+                continue
+        except Exception as api_error:
+            last_error = api_error
+            print(f"OpenAI API attempt {attempt + 1} failed: {api_error}")
+            continue
+
+    # If we got here, all attempts failed.
+    summary = f"{last_error}"
+    if last_content:
+        snippet = last_content[:400].replace("\n", " ")
+        summary += f" | last_content_snippet: {snippet}"
+    raise RuntimeError(f"Challenge generation failed after retries: {summary}")
 
 def get_fallback_challenge(difficulty: str = "Hard", topic: str | None = None):
     """Static challenges used if OpenAI fails, so UI stays usable."""
