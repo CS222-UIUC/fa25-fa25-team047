@@ -6,6 +6,8 @@ import os
 import json
 import csv
 import hashlib
+from datetime import datetime, timedelta
+from functools import wraps
 from dotenv import load_dotenv
 from pathlib import Path
 
@@ -22,9 +24,69 @@ if not api_key:
     print("WARNING: OPENAI_API_KEY not found in environment variables")
 openai_client = OpenAI(api_key=api_key) if api_key else None
 
+# Rate limiting storage
+# Structure: {ip_or_email: {'attempts': count, 'first_attempt': timestamp, 'locked_until': timestamp}}
+rate_limit_store = {}
+
 @app.route('/')
 def hello_world():
     return 'Hello, World!'
+
+def check_rate_limit(identifier: str, max_attempts: int = 5, window_minutes: int = 15, lockout_minutes: int = 30):
+    """
+    Check if an identifier (IP or email) has exceeded rate limits.
+    Returns (is_allowed: bool, message: str, retry_after: int or None)
+    """
+    now = datetime.now()
+
+    # Clean up old entries (older than window)
+    cutoff_time = now - timedelta(minutes=window_minutes)
+    expired_keys = [
+        key for key, data in rate_limit_store.items()
+        if data.get('first_attempt') and data['first_attempt'] < cutoff_time
+        and not data.get('locked_until')
+    ]
+    for key in expired_keys:
+        del rate_limit_store[key]
+
+    # Check if currently locked out
+    if identifier in rate_limit_store:
+        data = rate_limit_store[identifier]
+        if data.get('locked_until') and now < data['locked_until']:
+            seconds_remaining = int((data['locked_until'] - now).total_seconds())
+            return False, f"Too many failed attempts. Account locked. Try again in {seconds_remaining} seconds.", seconds_remaining
+        elif data.get('locked_until') and now >= data['locked_until']:
+            # Lockout expired, reset
+            del rate_limit_store[identifier]
+
+    # Check current attempts
+    if identifier not in rate_limit_store:
+        rate_limit_store[identifier] = {
+            'attempts': 1,
+            'first_attempt': now
+        }
+        return True, "", None
+
+    data = rate_limit_store[identifier]
+    data['attempts'] += 1
+
+    if data['attempts'] > max_attempts:
+        # Lock the account
+        data['locked_until'] = now + timedelta(minutes=lockout_minutes)
+        return False, f"Too many failed attempts. Account locked for {lockout_minutes} minutes.", lockout_minutes * 60
+
+    attempts_left = max_attempts - data['attempts'] + 1
+    return True, f"{attempts_left} attempts remaining before lockout.", None
+
+def record_failed_attempt(identifier: str):
+    """Record a failed login attempt."""
+    # This is already handled in check_rate_limit
+    pass
+
+def clear_rate_limit(identifier: str):
+    """Clear rate limit for successful login."""
+    if identifier in rate_limit_store:
+        del rate_limit_store[identifier]
 
 def hash_password(password: str) -> str:
     """Hash a password using SHA256."""
@@ -68,12 +130,32 @@ def login():
             400,
         )
 
+    # Get client IP for rate limiting
+    client_ip = request.remote_addr or 'unknown'
+    identifier = f"{email}:{client_ip}"
+
+    # Check rate limit before attempting authentication
+    is_allowed, rate_message, retry_after = check_rate_limit(identifier)
+
+    if not is_allowed:
+        response = jsonify({'error': rate_message})
+        if retry_after:
+            response.headers['Retry-After'] = str(retry_after)
+        return response, 429  # Too Many Requests
+
     # Verify credentials against CSV
     if not verify_user(email, password):
+        # Failed login - rate limit info is already recorded in check_rate_limit
+        attempts_info = ""
+        if rate_message:
+            attempts_info = f" {rate_message}"
         return (
-            jsonify({'error': 'Invalid email or password.'}),
+            jsonify({'error': f'Invalid email or password.{attempts_info}'}),
             401,
         )
+
+    # Successful login - clear rate limit
+    clear_rate_limit(identifier)
 
     # Generate session token
     token = f"session-{uuid4().hex}"
