@@ -1,3 +1,4 @@
+import re
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from uuid import uuid4
@@ -170,14 +171,18 @@ def chat():
     if not message:
         return jsonify({'error': 'Message is required.'}), 400
 
-    if not openai_client:
-        return jsonify({'error': 'OpenAI client not initialized. Please check API key.'}), 500
-
     # Detect a request for a coding challenge
     normalized = message.lower()
     wants_challenge, difficulty, topic = detect_challenge_request(normalized)
 
     if wants_challenge:
+        if not openai_client:
+            fallback = get_fallback_challenge(difficulty=difficulty, topic=topic)
+            return jsonify({
+                'message': "Using a fallback challenge because no OpenAI API key is configured.",
+                'challenge': fallback,
+                'error': 'OpenAI client not initialized. Please check API key.',
+            }), 200
         try:
             challenge = generate_coding_challenge(
                 user_prompt=message,
@@ -241,6 +246,12 @@ def chat():
     
     except Exception as e:
         print(f"Error calling OpenAI API: {str(e)}")
+        if not openai_client:
+            # When running without an API key, fall back to a mock response so the UI remains usable.
+            return jsonify({
+                'message': f"(mock) This is a test response to your message: '{message}'",
+                'warning': 'OpenAI client not initialized. Please check API key.',
+            }), 200
         return jsonify({'error': 'Failed to get response from AI.'}), 500
 
 def detect_challenge_request(normalized: str):
@@ -326,7 +337,7 @@ Rules:
             content = completion.choices[0].message.content
             last_content = content
             try:
-                return json.loads(content)
+                return parse_challenge_response(content)
             except Exception as parse_error:
                 last_error = parse_error
                 print(f"OpenAI parse attempt {attempt + 1} failed: {parse_error}")
@@ -603,6 +614,37 @@ def get_fallback_challenge(difficulty: str = "Hard", topic: str | None = None):
         return fallbacks[key]
     # Final fallback
     return fallbacks[("Hard", None)]
+
+
+def parse_challenge_response(raw: str):
+    """
+    Try a few lenient parses to handle occasional code fences or trailing text
+    from the model before falling back.
+    """
+    candidates = []
+    cleaned = raw.strip()
+    candidates.append(cleaned)
+    # Strip code fences if present.
+    if cleaned.startswith("```"):
+        candidates.append(re.sub(r"^```(?:json)?", "", cleaned).rstrip("`").strip())
+        for part in cleaned.split("```"):
+            if "{" in part:
+                candidates.append(part.strip())
+    # Extract the first balanced JSON object if possible.
+    start = cleaned.find("{")
+    end = cleaned.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        candidates.append(cleaned[start:end + 1])
+
+    last_error: Exception | None = None
+    for candidate in candidates:
+        try:
+            return json.loads(candidate)
+        except Exception as err:
+            last_error = err
+            continue
+    # If all attempts fail, raise the last error to trigger fallback.
+    raise last_error or ValueError("Unable to parse challenge JSON response.")
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True)
