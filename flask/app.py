@@ -4,6 +4,8 @@ from uuid import uuid4
 from openai import OpenAI
 import os
 import json
+import csv
+import hashlib
 from dotenv import load_dotenv
 from pathlib import Path
 
@@ -24,6 +26,30 @@ openai_client = OpenAI(api_key=api_key) if api_key else None
 def hello_world():
     return 'Hello, World!'
 
+def hash_password(password: str) -> str:
+    """Hash a password using SHA256."""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def verify_user(email: str, password: str) -> bool:
+    """Verify user credentials against users.csv."""
+    users_file = flask_dir / 'users.csv'
+
+    if not users_file.exists():
+        print(f"WARNING: users.csv not found at {users_file}")
+        return False
+
+    try:
+        with open(users_file, 'r') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if row['email'].strip() == email:
+                    password_hash = hash_password(password)
+                    return row['password_hash'].strip() == password_hash
+        return False
+    except Exception as e:
+        print(f"Error verifying user: {str(e)}")
+        return False
+
 @app.post('/auth/login')
 def login():
     payload = request.get_json(silent=True) or {}
@@ -36,13 +62,21 @@ def login():
             400,
         )
 
-    if not password or len(password) < 8:
+    if not password:
         return (
-            jsonify({'error': 'Password must be at least 8 characters long.'}),
+            jsonify({'error': 'Password is required.'}),
             400,
         )
 
-    token = f"dummy-session-{uuid4().hex}"
+    # Verify credentials against CSV
+    if not verify_user(email, password):
+        return (
+            jsonify({'error': 'Invalid email or password.'}),
+            401,
+        )
+
+    # Generate session token
+    token = f"session-{uuid4().hex}"
     return jsonify({'token': token, 'email': email})
 
 @app.post('/api/chat')
