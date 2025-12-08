@@ -62,6 +62,10 @@ export function LoginPage({
             />
           </div>
 
+          <p className="subtext">
+            Enter your email address... 
+          </p>
+
           <div className="space-y-2 text-left">
             <Label htmlFor="password">Password:</Label>
             <Input
@@ -74,6 +78,10 @@ export function LoginPage({
               required
             />
           </div>
+
+          <p className="subtext">
+            Enter your password... 
+          </p>
 
           {errorMessage ? (
             <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">

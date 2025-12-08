@@ -182,7 +182,9 @@
   }
 
   button, input, select, optgroup, textarea {
+    margin-top: 10px;
     font: inherit;
+    padding: 10px;
     font-feature-settings: inherit;
     font-variation-settings: inherit;
     letter-spacing: inherit;
@@ -650,7 +652,8 @@
 
   .border-input {
     border-color: #ff7a85;
-    margin-bottom: 30px;
+    margin-bottom: 20px;
+    
   }
 
   .border-t-transparent {
@@ -762,6 +765,12 @@
   .text-sm {
     font-size: var(--text-sm);
     line-height: var(--tw-leading, var(--text-sm--line-height));
+  }
+
+  .subtext {
+    font-size: 11px;
+    color: #ff7a85;
+    padding-top: 0px;
   }
 
   .text-xs {
