@@ -11,6 +11,8 @@ Finding the right coding problem to practice can be overwhelming. Existing platf
 ---
 
 ## (b) Technical Architecture
+![Code Companion Diagram](6129B342-4AAA-487F-A3B9-4076FF1D894C.jpeg)
+
 
 ### High-Level Architecture
 Code Companion uses a **separated frontend–backend architecture**:
@@ -66,18 +68,27 @@ Code Companion uses a **separated frontend–backend architecture**:
 - `pip`
 - An OpenAI API key
 
-### Create a .env file with:
-- OPENAI_API_KEY=your_api_key_here
+### Create a .env file:
+Name it .env and place this line in the file
+```bash
+OPENAI_API_KEY=your_api_key_here
+```
+- Replace your_api_key_here with an API key from OpenAI
 
 ### Run the backend:
-- cd flask
-- python app.py
+- Open up the terminal and run
+```bash
+cd flask
+python app.py
+```
 
 ### Run the frontend:
-- Open a new terminal
-- cd ChatBoxUI
-- npm install
-- npm run dev
+- Open up an additional terminal and run
+```bash
+cd ChatBoxUI
+npm install
+npm run dev
+```
 
 ## The app will open at
 - http://localhost:5000
@@ -112,7 +123,4 @@ Code Companion uses a **separated frontend–backend architecture**:
 - **Tooling:** `.env` for secrets  
 
 ---
-
-
-
 
