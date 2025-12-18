@@ -113,11 +113,6 @@ Code Companion uses a **separated frontend–backend architecture**:
 
 ---
 
-### Backend Setup
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+
 
 
